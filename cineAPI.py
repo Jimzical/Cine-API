@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 import pickle
 import pandas as pd
 from fuzzywuzzy import process, fuzz
@@ -10,23 +11,7 @@ df = pd.read_csv('data/df_v3.csv')
 # # Importing model
 with gzip.open('model/content_based_model_v2.pkl.gz', 'rb') as f:
     cosine_similarity_matrix = pickle.load(f)
-    
 
-app = FastAPI(
-    title="CineAPI",
-    description="A simple API for movie recommendations",
-    version="1.0.0",
-    openapi_tags=[
-        {
-            "name": "Recommendations",
-            "description": "Endpoints for getting movie recommendations"
-        },
-        {
-            "name": "Movies",
-            "description": "Endpoints for working with movie data"
-        },
-    ]
-)
 
 def search_movie_title(query, movie_titles):
     """
@@ -96,6 +81,37 @@ def get_content_based_recommendations(movie_title : str, model_data : dict, df :
     response = {"recommendations": recommended_movie_titles}
 
     return response
+
+
+app = FastAPI(
+    title="CineAPI",
+    description="A simple API for movie recommendations",
+    version="1.0.0",
+    openapi_tags=[
+        {
+            "name": "Recommendations",
+            "description": "Endpoints for getting movie recommendations"
+        },
+        {
+            "name": "Movies",
+            "description": "Endpoints for working with movie data"
+        },
+    ]
+)
+
+origins = [
+    "http://localhost:3000",  # React app address
+    # add more origins if needed
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 @app.get("/", tags=["General"])
 async def root() -> dict:
