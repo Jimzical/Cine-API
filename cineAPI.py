@@ -7,7 +7,7 @@ from fastapi import Query
 
 
 # Reading data
-df = pd.read_csv('data/df_v3.csv')
+df = pd.read_csv('data/df_v4.csv')
 
 
 cosine_similarity_matrix = load_model('model/content_based_model_v2.pkl.gz')
@@ -207,4 +207,3 @@ async def get_popular_movies(
     ```
     """
     return popular_movies(df,sortby=sortby, limit=limit)
-    # return await get_popular_movies_func(sortby, limit)

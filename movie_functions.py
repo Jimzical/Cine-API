@@ -4,6 +4,8 @@ import pandas as pd
 from fastapi import HTTPException
 from fuzzywuzzy import process, fuzz
 
+df = pd.read_csv('data/df_v4.csv')
+
 
 def load_model(model_path):
     with gzip.open(model_path, 'rb') as f:
