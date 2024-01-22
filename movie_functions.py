@@ -13,7 +13,15 @@ def load_model(model_path):
     return model
 
 def get_all_movies(df):
-    return{"movies": df['original_title'].values.tolist()}
+    return {"movies": df[['id', 'original_title']].to_dict(orient='records')}
+
+def search_movie_title(query, movie_titles):
+    matches = process.extract(query, movie_titles, scorer=fuzz.ratio)
+    matches = [match for match in matches if match[1] >= 60]
+    if matches:
+        return matches[0][0]
+    else:
+        return None
 
 def get_movie_by_title(movie_title, df):
     """
@@ -34,13 +42,6 @@ def get_movie_by_title(movie_title, df):
         raise HTTPException(status_code=404, detail="Movie not found")
     return {"movie": movie.to_dict(orient='records')}
 
-def search_movie_title(query, movie_titles):
-    matches = process.extract(query, movie_titles, scorer=fuzz.ratio)
-    matches = [match for match in matches if match[1] >= 60]
-    if matches:
-        return matches[0][0]
-    else:
-        return None
 
 def get_content_based_recommendations(movie_title, model_data, df, limit=6):
     movie_title = movie_title.lower()
@@ -52,7 +53,7 @@ def get_content_based_recommendations(movie_title, model_data, df, limit=6):
     similar_movies = list(enumerate(cosine_similarities[movie_index]))
     similar_movies = sorted(similar_movies, key=lambda x: x[1], reverse=True)
     similar_movies = similar_movies[1:limit]
-    recommended_movie_titles = [df['original_title'].iloc[i[0]] for i in similar_movies]
+    recommended_movie_titles = [df[['id', 'original_title']].iloc[i[0]].to_dict() for i in similar_movies]
     response = {"recommendations": recommended_movie_titles}
     return response
 
@@ -62,8 +63,11 @@ def get_popular_movies(df, sortby: str, limit: int):
     if sortby == 'title':
         sortby = 'original_title'
 
+    sorted_movies = df.sort_values(by=sortby, ascending=False)[['id', 'original_title']].head(limit+1)
+    movies_list = sorted_movies.values.tolist()[1:]
+
     res = {
-        "movies": df.sort_values(by=sortby, ascending=False)['original_title'].head(limit).values.tolist()[1:]
+        "movies": [{"id": movie[0], "title": movie[1]} for movie in movies_list]
     }
 
     return res

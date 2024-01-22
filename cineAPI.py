@@ -70,17 +70,27 @@ async def get_movies() -> dict:
 
     **Example:**
 
-    `curl http://localhost:8000/movies`
+    `curl -X 'GET' \
+  'http://127.0.0.1:8000/movies' \
+  -H 'accept: application/json'`
     
     **Example Response:**
     ```json
-    {"movies": [
-        "The Matrix", 
-        "Inception", 
-        "The Dark Knight", 
-        "Interstellar", 
-        "The Lord of the Rings: The Fellowship of the Ring"
-        ]
+    {
+    "movies": [
+        {
+        "id": 135397,
+        "original_title": "jurassic world"
+        },
+        {
+        "id": 76341,
+        "original_title": "mad max fury road"
+        },
+        {
+        "id": 262500,
+        "original_title": "insurgent"
+        }
+    ]
     }
     ```
     """
@@ -149,24 +159,31 @@ async def get_movie_recommendations(
 
     **Example:**
 
-    `curl http://localhost:8000/recommendations/Inception?limit=10`
+    `curl -X 'GET' \
+  'http://127.0.0.1:8000/recommendations/spd%20man?limit=5' \
+  -H 'accept: application/json'`
 
     **Example Response:**
     ```json
     {
-    "recommendations": 
-        [
-            "Inception", 
-            "The Matrix",
-            "The Matrix Revolutions", 
-            "The Matrix Reloaded", 
-            "The Terminator",
-            "Movie 6",
-            "Movie 7",
-            "Movie 8",
-            "Movie 9",
-            "Movie 10"
-        ]
+    "recommendations": [
+        {
+        "id": 557,
+        "original_title": "spider man"
+        },
+        {
+        "id": 559,
+        "original_title": "spider man 3"
+        },
+        {
+        "id": 102382,
+        "original_title": "the amazing spider man 2"
+        },
+        {
+        "id": 1930,
+        "original_title": "the amazing spider man"
+        }
+    ]
     }
     ```
     """
@@ -191,18 +208,27 @@ async def get_popular_movies(
 
     **Example:**
 
-    `curl http://localhost:8000/popular?sortby=profit&limit=5`
+    `curl -X 'GET' \
+    'http://127.0.0.1:8000/popular?sortby=score&limit=3' \
+    -H 'accept: application/json'`
+
     **Example Response:**
     ```json
     {
-    "movies": 
-        [
-            "Movie 1",
-            "Movie 2",
-            "Movie 3",
-            "Movie 4",
-            "Movie 5"
-        ]
+    "movies": [
+        {
+        "id": 278,
+        "title": "the shawshank redemption"
+        },
+        {
+        "id": 238,
+        "title": "the godfather"
+        },
+        {
+        "id": 244786,
+        "title": "whiplash"
+        }
+    ]
     }
     ```
     """
