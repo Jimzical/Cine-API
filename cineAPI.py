@@ -64,7 +64,9 @@ async def root() -> dict:
         }
 
 @app.get("/movies", tags=["Movies"])
-async def get_movies() -> dict:
+async def get_movies(
+    limit: int = Query(-1, ge=-1, description="The number of movies to return")
+) -> dict:
     """
     **Description:**
     Retrieves a list of all available movies.
@@ -75,12 +77,12 @@ async def get_movies() -> dict:
     **Example:**
 
     `curl -X 'GET' \
-  'http://127.0.0.1:8000/movies' \
+  'http://127.0.0.1:8000/movies?limit=3' \
   -H 'accept: application/json'`
     
     **Example Response:**
     ```json
-    {
+   {
     "movies": [
         {
         "id": 135397,
@@ -98,11 +100,10 @@ async def get_movies() -> dict:
     }
     ```
     """
-    return get_all_movies(df)
+    return get_all_movies(df,limit=limit)
 
 @app.get("/movies/{movie_title}", tags=["Movies"])
-
-async def get_movie_details(movie_title: str) -> dict:
+async def get_movie_details(movie_title: str    ) -> dict:
     """
     **Description:**
     Retrieves details of a specific movie.
@@ -115,29 +116,37 @@ async def get_movie_details(movie_title: str) -> dict:
 
     **Example:**
 
-    `curl http://localhost:8000/movies/The%20Matrix`
+    `curl -X 'GET' \
+    'http://127.0.0.1:8000/movies/btman' \
+    -H 'accept: application/json'`
 
     **Example Response:**
     ```json
     {
+    "query": "btman",
+    "matched_title": "batman",
     "movie": [
         {
-        "id": 603,
-        "popularity": 7.753899,
-        "original_title": "the matrix",
-        "cast": "Keanu Reeves Laurence Fishburne Carrie-Anne Moss Hugo Weaving Gloria Foster",
-        "director": "Lilly Wachowski|Lana Wachowski",
-        "keywords": "saving the world artificial intelligence man vs machine philosophy prophecy",
-        "runtime": 136,
-        "genres": "Action Science Fiction",
-        "release_date": "3/30/1999",
-        "vote_count": 6351,
-        "vote_average": 7.8,
-        "release_year": 1999,
-        "budget_adj": 82470329.34,
-        "revenue_adj": 606768749.7,
-        "profit": 524298420.36,
-        "release_month": 3
+            "id": 268,
+            "original_title": "batman",
+            "cast": "Jack Nicholson Michael Keaton Kim Basinger Michael Gough Pat Hingle",
+            "director": "Tim Burton",
+            "keywords": "double life dc comics dual identity chemical crime fighter",
+            "runtime": 126,
+            "genres": "Fantasy Action",
+            "vote_average": 6.9,
+            "release_year": 1989
+        },
+        {
+            "id": 2661,
+            "original_title": "batman",
+            "cast": "Adam West Burt Ward Cesar Romero Burgess Meredith Frank Gorshin",
+            "director": "Leslie H. Martinson",
+            "keywords": "submarine dc comics shark attack shark shark repelent",
+            "runtime": 105,
+            "genres": "Family Adventure Comedy Science Fiction Crime",
+            "vote_average": 5.9,
+            "release_year": 1966
         }
     ]
     }
@@ -213,24 +222,26 @@ async def get_popular_movies(
     **Example:**
 
     `curl -X 'GET' \
-    'http://127.0.0.1:8000/popular?sortby=score&limit=3' \
+    'http://127.0.0.1:8000/recommendations/spdman?limit=3' \
     -H 'accept: application/json'`
 
     **Example Response:**
     ```json
     {
-    "movies": [
+    "query": "spdman",
+    "matched_title": "spider man",
+    "recommendations": [
         {
-        "id": 278,
-        "title": "the shawshank redemption"
+        "id": 557,
+        "original_title": "spider man"
         },
         {
-        "id": 238,
-        "title": "the godfather"
+        "id": 559,
+        "original_title": "spider man 3"
         },
         {
-        "id": 244786,
-        "title": "whiplash"
+        "id": 102382,
+        "original_title": "the amazing spider man 2"
         }
     ]
     }
