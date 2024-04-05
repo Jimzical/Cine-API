@@ -1,3 +1,8 @@
+'''
+How to run
+uvicorn cineAPI:app --reload
+'''
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
