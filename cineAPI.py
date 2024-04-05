@@ -1,101 +1,55 @@
+'''
+How to run
+uvicorn cineAPI:app --reload
+'''
+
 from fastapi import FastAPI, HTTPException
-import pickle
+from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
-from fuzzywuzzy import process, fuzz
-import gzip
+from movie_functions import get_all_movies, get_movie_by_title, search_movie_title, get_content_based_recommendations,load_model
+from movie_functions import get_popular_movies as popular_movies
+from fastapi import Query
+
 
 # Reading data
-df = pd.read_csv('data/df_v3.csv')
+df = pd.read_csv('data/df_v4.csv')
 
-# # Importing model
-with gzip.open('model/content_based_model_v2.pkl.gz', 'rb') as f:
-    cosine_similarity_matrix = pickle.load(f)
-    
+
+cosine_similarity_matrix = load_model('model/content_based_model_v2.pkl.gz')
 
 app = FastAPI(
     title="CineAPI",
-    description="A simple API for movie recommendations",
+    description="A Simple API for `Movie Recommendations`",
     version="1.0.0",
     openapi_tags=[
         {
+            "name": "General",
+            "description": "General Endpoints"
+        },
+        {
             "name": "Recommendations",
-            "description": "Endpoints for getting movie recommendations"
+            "description": "Endpoints for Getting Movie Recommendations"
         },
         {
             "name": "Movies",
-            "description": "Endpoints for working with movie data"
+            "description": "Endpoints for Working with Movie Data"
         },
     ]
 )
 
-def search_movie_title(query, movie_titles):
-    """
-    Search for a movie title in the list of movie titles.
+origins = [
+    "http://localhost:3000",  # React app address
+    # add more origins if needed
+]
 
-    **Parameters:**
-    query (str): The query string to search for.
-    movie_titles (list): The list of movie titles to search in.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-    **Returns:**
-    str: The best matching movie title, or None if no good match was found.
-    """
-    # Extract all matches without a score cutoff
-    matches = process.extract(query, movie_titles, scorer=fuzz.ratio)
-
-    # Filter matches based on score cutoff
-    matches = [match for match in matches if match[1] >= 60]
-
-    # Return the best match or None
-    if matches:
-        return matches[0][0]  # Return only the match string
-    else:
-        return None
-
-def get_content_based_recommendations(movie_title : str, model_data : dict, df : pd.DataFrame, limit : int = 6):
-    """
-    Get content-based recommendations for a movie.
-
-    **Parameters:**
-    movie_title (str): The title of the movie to get recommendations for.
-    model_data (dict): The model data (cosine similarity matrix).
-    df (DataFrame): The dataframe containing the movie data.
-    limit (int): The number of recommendations to return.[ Default: 5 ]
-
-    **Returns:**
-    dict: The list of top 5 recommended movies.
-
-    **Example:**
-    >>> get_content_based_recommendations('Inception', cosine_similarity_matrix, df)
-    {'recommendations': ['Inception', 'The Matrix', 'The Matrix Revolutions', 'The Matrix Reloaded', 'The Terminator']}
-    """
-
- 
-    # making movie title to be lowercase
-    movie_title = movie_title.lower()
-
-    cosine_similarities = model_data['cosine_similarities']
-
-    # Use fuzzy matching to find the closest match to the input movie title
-    matched_title = search_movie_title(movie_title, df['original_title'])
-
-    if matched_title is None:
-        raise HTTPException(status_code=404, detail="Movie not found")
-    
-    # Find the index of the given movie title in the dataframe
-    movie_index = df[df['original_title'] == matched_title].index[0]
-    # Calculate cosine similarities with other movies
-    similar_movies = list(enumerate(cosine_similarities[movie_index]))
-    similar_movies = sorted(similar_movies, key=lambda x: x[1], reverse=True)
-    # Get the top 5 recommendations
-    similar_movies = similar_movies[1:limit]  # Skip the first movie because it's the input movie itself
-
-    # Map the movie indices back to movie titles
-    recommended_movie_titles = [df['original_title'].iloc[i[0]] for i in similar_movies]
-
-    # Convert the list of movie names to a dictionary
-    response = {"recommendations": recommended_movie_titles}
-
-    return response
 
 @app.get("/", tags=["General"])
 async def root() -> dict:
@@ -115,7 +69,9 @@ async def root() -> dict:
         }
 
 @app.get("/movies", tags=["Movies"])
-async def get_all_movies() -> dict:
+async def get_movies(
+    limit: int = Query(-1, ge=-1, description="The number of movies to return")
+) -> dict:
     """
     **Description:**
     Retrieves a list of all available movies.
@@ -125,25 +81,34 @@ async def get_all_movies() -> dict:
 
     **Example:**
 
-    `curl http://localhost:8000/movies`
+    `curl -X 'GET' \
+  'http://127.0.0.1:8000/movies?limit=3' \
+  -H 'accept: application/json'`
     
     **Example Response:**
     ```json
-    {"movies": [
-        "The Matrix", 
-        "Inception", 
-        "The Dark Knight", 
-        "Interstellar", 
-        "The Lord of the Rings: The Fellowship of the Ring"
-        ]
+   {
+    "movies": [
+        {
+        "id": 135397,
+        "original_title": "jurassic world"
+        },
+        {
+        "id": 76341,
+        "original_title": "mad max fury road"
+        },
+        {
+        "id": 262500,
+        "original_title": "insurgent"
+        }
+    ]
     }
     ```
     """
-    return {"movies": df['original_title'].values.tolist()}
+    return get_all_movies(df,limit=limit)
 
 @app.get("/movies/{movie_title}", tags=["Movies"])
-
-async def get_movie_details(movie_title: str) -> dict:
+async def get_movie_details(movie_title: str    ) -> dict:
     """
     **Description:**
     Retrieves details of a specific movie.
@@ -156,44 +121,49 @@ async def get_movie_details(movie_title: str) -> dict:
 
     **Example:**
 
-    `curl http://localhost:8000/movies/The%20Matrix`
+    `curl -X 'GET' \
+    'http://127.0.0.1:8000/movies/btman' \
+    -H 'accept: application/json'`
 
     **Example Response:**
     ```json
     {
+    "query": "btman",
+    "matched_title": "batman",
     "movie": [
         {
-        "id": 603,
-        "popularity": 7.753899,
-        "original_title": "the matrix",
-        "cast": "Keanu Reeves Laurence Fishburne Carrie-Anne Moss Hugo Weaving Gloria Foster",
-        "director": "Lilly Wachowski|Lana Wachowski",
-        "keywords": "saving the world artificial intelligence man vs machine philosophy prophecy",
-        "runtime": 136,
-        "genres": "Action Science Fiction",
-        "release_date": "3/30/1999",
-        "vote_count": 6351,
-        "vote_average": 7.8,
-        "release_year": 1999,
-        "budget_adj": 82470329.34,
-        "revenue_adj": 606768749.7,
-        "profit": 524298420.36,
-        "release_month": 3
+            "id": 268,
+            "original_title": "batman",
+            "cast": "Jack Nicholson Michael Keaton Kim Basinger Michael Gough Pat Hingle",
+            "director": "Tim Burton",
+            "keywords": "double life dc comics dual identity chemical crime fighter",
+            "runtime": 126,
+            "genres": "Fantasy Action",
+            "vote_average": 6.9,
+            "release_year": 1989
+        },
+        {
+            "id": 2661,
+            "original_title": "batman",
+            "cast": "Adam West Burt Ward Cesar Romero Burgess Meredith Frank Gorshin",
+            "director": "Leslie H. Martinson",
+            "keywords": "submarine dc comics shark attack shark shark repelent",
+            "runtime": 105,
+            "genres": "Family Adventure Comedy Science Fiction Crime",
+            "vote_average": 5.9,
+            "release_year": 1966
         }
     ]
     }
     ```
     """
-    movie_title = movie_title.lower()
-    movie_title = search_movie_title(movie_title, df['original_title'])
-
-    movie = df[df['original_title'] == movie_title]
-    if movie.empty:
-        raise HTTPException(status_code=404, detail="Movie not found")
-    return {"movie": movie.to_dict(orient='records')}
+    return get_movie_by_title(movie_title, df)
 
 @app.get("/recommendations/{movie}", tags=["Recommendations"])
-async def get_movie_recommendations(movie: str, limit: int = 5) -> dict:
+async def get_movie_recommendations(
+    movie: str ,
+    limit: int = Query(5, ge=1, le=10, description="The number of recommendations to return")
+) -> dict:
     """
     **Description:**
     Retrieves top N recommendations for a specific movie.
@@ -207,25 +177,79 @@ async def get_movie_recommendations(movie: str, limit: int = 5) -> dict:
 
     **Example:**
 
-    `curl http://localhost:8000/recommendations/Inception?limit=10`
+    `curl -X 'GET' \
+  'http://127.0.0.1:8000/recommendations/spd%20man?limit=5' \
+  -H 'accept: application/json'`
 
     **Example Response:**
     ```json
     {
-    "recommendations": 
-        [
-            "Inception", 
-            "The Matrix",
-            "The Matrix Revolutions", 
-            "The Matrix Reloaded", 
-            "The Terminator",
-            "Movie 6",
-            "Movie 7",
-            "Movie 8",
-            "Movie 9",
-            "Movie 10"
-        ]
+    "recommendations": [
+        {
+        "id": 557,
+        "original_title": "spider man"
+        },
+        {
+        "id": 559,
+        "original_title": "spider man 3"
+        },
+        {
+        "id": 102382,
+        "original_title": "the amazing spider man 2"
+        },
+        {
+        "id": 1930,
+        "original_title": "the amazing spider man"
+        }
+    ]
     }
     ```
     """
     return get_content_based_recommendations(movie, cosine_similarity_matrix, df, limit)
+
+
+@app.get("/popular", tags=["Recommendations"])
+async def get_popular_movies(
+    sortby: str = Query('score', description="The metric to sort by", enum=['score', 'title', 'release_year']),
+    limit: int = Query(10, ge=1, description="The number of movies to return")
+) -> dict:
+    """
+    **Description:**
+    Retrieves a list of popular movies sorted by a given metric.
+
+    **Parameters:**
+    - sortby (str, optional): The metric to sort by. Valid values are `score`, `title`, and `release_year`. Defaults to `score`.
+    - limit (int, optional): The number of movies to return. Defaults to 10.
+
+    **Returns:**
+    A list of movie titles sorted by the given metric.
+
+    **Example:**
+
+    `curl -X 'GET' \
+    'http://127.0.0.1:8000/recommendations/spdman?limit=3' \
+    -H 'accept: application/json'`
+
+    **Example Response:**
+    ```json
+    {
+    "query": "spdman",
+    "matched_title": "spider man",
+    "recommendations": [
+        {
+        "id": 557,
+        "original_title": "spider man"
+        },
+        {
+        "id": 559,
+        "original_title": "spider man 3"
+        },
+        {
+        "id": 102382,
+        "original_title": "the amazing spider man 2"
+        }
+    ]
+    }
+    ```
+    """
+    return popular_movies(df,sortby=sortby, limit=limit)
